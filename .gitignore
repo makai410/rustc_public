@@ -3,3 +3,9 @@
 .nix-cargo/
 target/
 /book
+**/target
+
+.idea
+*.swp
+*.swo
+.vscode
