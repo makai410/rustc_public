@@ -1,4 +1,10 @@
 /book
+**/target
+
+.idea
+*.swp
+*.swo
+.vscode
 
 .envrc
 .direnv/
