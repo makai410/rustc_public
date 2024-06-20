@@ -3,6 +3,7 @@
 .nix-cargo/
 target/
 /book
+/book/build
 **/target
 
 .idea
