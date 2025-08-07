@@ -14,7 +14,7 @@ jobs:
       # If you want the Zulip post functionality
       #zulip-stream-id: 1234   # optional
       #zulip-bot-email: subtree-gha-notif-bot@rust-lang.zulipchat.com # optional
-      pr-base-branch: master   # optional
+      pr-base-branch: empty   # optional
       branch-name: rustc-pull  # optional
     secrets:
       #zulip-api-token: <Zulip API TOKEN>     # optional
