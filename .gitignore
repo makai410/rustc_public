@@ -1,7 +1,0 @@
-/book/build
-**/target
-
-.idea
-*.swp
-*.swo
-.vscode
