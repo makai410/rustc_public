@@ -1,0 +1,22 @@
+name: Run compiler tests
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # Run daily at 06:00 UTC
+  workflow_dispatch:     # Allow manual dispatching
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test-on-nightly:
+    name: Rust Compiler Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rust-src
+      - run: ./plz test

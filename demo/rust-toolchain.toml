@@ -1,0 +1,5 @@
+[toolchain]
+# Most users will want to pin down a specific version, e.g.:
+# channel = "nightly-2024-06-17"
+channel = "nightly"
+components = ["llvm-tools", "rustc-dev", "rust-src"]
