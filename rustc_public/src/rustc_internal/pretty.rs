@@ -4,6 +4,7 @@ use rustc_middle::ty::TyCtxt;
 
 use super::run;
 
+// OMG what it is
 pub fn write_smir_pretty<'tcx, W: io::Write>(tcx: TyCtxt<'tcx>, w: &mut W) -> io::Result<()> {
     writeln!(
         w,
