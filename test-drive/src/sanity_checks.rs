@@ -4,8 +4,8 @@
 //! These checks should only depend on StableMIR APIs. See other modules for tests that compare
 //! the result between StableMIR and internal APIs.
 use crate::TestResult;
-use stable_mir::ty::{ImplDef, TraitDef};
-use stable_mir::{self, mir, mir::MirVisitor, ty, CrateDef};
+use rustc_public::ty::{ImplDef, TraitDef};
+use rustc_public::{self, mir, mir::MirVisitor, ty, CrateDef};
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::iter::zip;
@@ -34,17 +34,17 @@ pub fn check(val: bool, msg: String) -> TestResult {
 
 // Test that if there is an entry point, the function is part of `all_local_items`.
 pub fn test_entry_fn() -> TestResult {
-    let entry_fn = stable_mir::entry_fn();
+    let entry_fn = rustc_public::entry_fn();
     entry_fn.map_or(Ok(()), |entry_fn| {
-        check_body(&entry_fn.name(), &entry_fn.body())?;
-        let all_items = stable_mir::all_local_items();
+        check_body(&entry_fn.name(), &entry_fn.body().unwrap())?;
+        let all_items = rustc_public::all_local_items();
         check(
             all_items.contains(&entry_fn),
             format!("Failed to find entry_fn: `{:?}`", entry_fn),
         )?;
         check_equal(
             entry_fn.kind(),
-            stable_mir::ItemKind::Fn,
+            rustc_public::ItemKind::Fn,
             "Entry must be a function",
         )
     })
@@ -52,19 +52,19 @@ pub fn test_entry_fn() -> TestResult {
 
 /// Iterate over local function bodies.
 pub fn test_all_fns() -> TestResult {
-    let all_items = stable_mir::all_local_items();
+    let all_items = rustc_public::all_local_items();
     for item in all_items {
         // Get body and iterate over items
         let body = item.body();
-        check_body(&item.name(), &body)?;
+        check_body(&item.name(), &body.unwrap())?;
     }
     Ok(())
 }
 
 /// Test that we can retrieve information about the trait declaration for every trait implementation.
 pub fn test_traits() -> TestResult {
-    let all_traits = HashSet::<TraitDef>::from_iter(stable_mir::all_trait_decls().into_iter());
-    for trait_impl in stable_mir::all_trait_impls()
+    let all_traits = HashSet::<TraitDef>::from_iter(rustc_public::all_trait_decls().into_iter());
+    for trait_impl in rustc_public::all_trait_impls()
         .iter()
         .map(ImplDef::trait_impl)
     {
@@ -77,26 +77,26 @@ pub fn test_traits() -> TestResult {
 }
 
 pub fn test_crates() -> TestResult {
-    for krate in stable_mir::external_crates() {
+    for krate in rustc_public::external_crates() {
         check(
-            stable_mir::find_crates(&krate.name.as_str()).contains(&krate),
+            rustc_public::find_crates(&krate.name.as_str()).contains(&krate),
             format!("Cannot find `{krate:?}`"),
         )?;
     }
 
-    let local = stable_mir::local_crate();
+    let local = rustc_public::local_crate();
     check(
-        stable_mir::find_crates(&local.name.as_str()).contains(&local),
+        rustc_public::find_crates(&local.name.as_str()).contains(&local),
         format!("Cannot find local: `{local:?}`"),
     )
 }
 
 pub fn test_instances() -> TestResult {
-    let all_items = stable_mir::all_local_items();
+    let all_items = rustc_public::all_local_items();
     let mut queue = all_items
         .iter()
         .filter_map(|item| {
-            (item.kind() == stable_mir::ItemKind::Fn)
+            (item.kind() == rustc_public::ItemKind::Fn)
                 .then(|| mir::mono::Instance::try_from(*item).ok())
                 .flatten()
         })

@@ -1,0 +1,21 @@
+name: rustc-pull
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run at 04:00 UTC every day
+    - cron: "0 4 * * *"
+
+jobs:
+  pull:
+    uses: rust-lang/josh-sync/.github/workflows/rustc-pull.yml@main
+    with:
+      github-app-id: ${{ vars.APP_CLIENT_ID }}
+      # If you want the Zulip post functionality
+      #zulip-stream-id: 1234   # optional
+      #zulip-bot-email: subtree-gha-notif-bot@rust-lang.zulipchat.com # optional
+      pr-base-branch: main   # optional
+      branch-name: rustc-pull  # optional
+    secrets:
+      #zulip-api-token: <Zulip API TOKEN>     # optional
+      github-app-secret: ${{ secrets.APP_PRIVATE_KEY }}

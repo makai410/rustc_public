@@ -1,0 +1,4 @@
+org = "makai410"
+repo = "rustc_public"
+path = "compiler/rustc_public"
+# filter = ":rev(4d79328091167135e890b77f0fbf5b8b9479c80b:prefix=compiler/rustc_public):/compiler/rustc_public"

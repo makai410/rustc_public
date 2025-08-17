@@ -6,28 +6,17 @@ on:
   workflow_dispatch:     # Allow manual dispatching
   pull_request:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  compile-test:
+  test-on-nightly:
     name: Rust Compiler Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
         with:
-          toolchain: nightly
-
-      - name: Test local suites
-        run: ./.github/scripts/run_own_tests.sh
-        env:
-          TOOLS_BIN: "/tmp/smir/bin"
-
-      - name: Test rustc suites
-        run: ./.github/scripts/run_rustc_tests.sh
-        env:
-          RUST_REPO: "/tmp/rustc"
-          TOOLS_BIN: "/tmp/smir/bin"
-        # Don't fail CI for now. See: https://github.com/rust-lang/project-stable-mir/issues/39
-        continue-on-error: true
+          components: rust-src
+      - run: ./plz test

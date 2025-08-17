@@ -7,12 +7,10 @@ mod sanity_checks;
 
 extern crate rustc_driver;
 extern crate rustc_interface;
-#[macro_use]
-extern crate rustc_smir;
-extern crate stable_mir;
+extern crate rustc_middle;
 
-use rustc_smir::{run, rustc_internal};
-use stable_mir::CompilerError;
+use rustc_public::run;
+use rustc_public::CompilerError;
 use std::ops::ControlFlow;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::process::ExitCode;
@@ -48,9 +46,9 @@ fn main() -> ExitCode {
             smir_args.contains(&FIXME_ARG.to_string()),
             Ordering::Relaxed,
         );
-        run!(rustc_args, test_stable_mir)
+        run!(&rustc_args, test_stable_mir)
     } else {
-        run!(rustc_args, || ControlFlow::<()>::Continue(()))
+        run!(&rustc_args, || ControlFlow::<()>::Continue(()))
     };
     if result.is_ok() || matches!(result, Err(CompilerError::Skipped)) {
         ExitCode::SUCCESS
