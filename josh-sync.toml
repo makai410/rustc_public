@@ -1,0 +1,3 @@
+org = "rust-lang"
+repo = "project-stable-mir"
+path = "compiler/rustc_public"
