@@ -1,10 +1,11 @@
 [package]
-name = "smir-demo"
-description = "A little demo tool on how to use StableMIR to analyze crates"
+name = "rpub-demo"
+description = "A little demo tool on how to use rustc_public to analyze crates"
 version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+rustc_public = { path = "../rustc_public", features = ["rustc_internal"] }
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)].
