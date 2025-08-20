@@ -1,6 +1,6 @@
 [package]
-name = "rpub-demo"
-description = "A little demo tool on how to use rustc_public to analyze crates"
+name = "test-drive"
+description = "A rustc wrapper that can be used to test rustc_public on a crate"
 version = "0.0.0"
 edition = "2021"
 
