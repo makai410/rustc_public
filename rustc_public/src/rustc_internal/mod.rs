@@ -64,6 +64,7 @@ pub(crate) fn init<'tcx, F, T, B: Bridge>(container: &Container<'tcx, B>, f: F) 
 where
     F: FnOnce() -> T,
 {
+    // what if i add a change here then?
     assert!(!TLV.is_set());
     let ptr = container as *const _ as *const ();
     TLV.set(&Cell::new(ptr), || f())
