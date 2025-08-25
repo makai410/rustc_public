@@ -1,0 +1,3 @@
+org = "makai410"
+repo = "rust"
+path = ":/compiler/rustc_public:prefix=rustc_public"
