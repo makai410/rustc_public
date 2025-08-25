@@ -66,6 +66,7 @@ impl Bridge for BridgeTys {
     type Allocation = crate::ty::Allocation;
 }
 
+// this is a change.
 /// Public API for querying compiler information.
 ///
 /// All queries are delegated to [`rustc_public_bridge::context::CompilerCtxt`] that provides
