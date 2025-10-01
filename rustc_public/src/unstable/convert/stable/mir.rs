@@ -215,7 +215,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 mutability.stable(tables, cx),
                 place.stable(tables, cx),
             ),
-            Len(place) => crate::mir::Rvalue::Len(place.stable(tables, cx)),
+            // Len(place) => crate::mir::Rvalue::Len(place.stable(tables, cx)),
             Cast(cast_kind, op, ty) => crate::mir::Rvalue::Cast(
                 cast_kind.stable(tables, cx),
                 op.stable(tables, cx),
