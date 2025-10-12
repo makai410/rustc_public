@@ -2,6 +2,7 @@
 name = "rustc_public"
 version = "0.1.0-preview"
 edition = "2024"
+build = "../build.rs"
 
 [dependencies]
 # tidy-alphabetical-start
@@ -16,6 +17,9 @@ scoped-tls = "1.0"
 serde = { version = "1.0.125", features = [ "derive" ] }
 tracing = "0.1"
 # tidy-alphabetical-end
+
+[build-dependencies]
+rustversion = "1"
 
 [dev-dependencies]
 regex = "1.5.5"
