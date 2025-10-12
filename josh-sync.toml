@@ -1,0 +1,3 @@
+org = "makai410"
+repo = "rustc_public"
+filter = ":/compiler/rustc_public:prefix=rustc_public:exclude[:/rustc_public/Cargo.toml]"
