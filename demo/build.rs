@@ -8,8 +8,10 @@ pub fn main() {
     let rustc_lib: PathBuf = [&rustup_home, "toolchains", &toolchain, "lib"]
         .iter()
         .collect();
-    println!(
-        "cargo:rustc-link-arg-bin=rpub-demo=-Wl,-rpath,{}",
-        rustc_lib.display()
-    );
+    
+    // If your binary target has a different name to your package, you'll need
+    // to hardcode it here.
+    let bin_name = env::var("CARGO_PKG_NAME").unwrap();
+
+    println!("cargo:rustc-link-arg-bin={}=-Wl,-rpath,{}", bin_name, rustc_lib.display());
 }
