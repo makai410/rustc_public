@@ -51,7 +51,7 @@ cargo run -p compiletest -- --help
 ## Test Suites
 
 We have a few different test suites for Stable MIR:
-  - **Rust compiler [`ui-fulldeps/stable-mir`](https://github. com/rust-lang/rust/tree/master/tests/ui-fulldeps/stable-mir):**
+  - **Rust compiler [`ui-fulldeps/rustc_public`](https://github.com/rust-lang/rust/tree/master/tests/ui-fulldeps/rustc_public):**
     These are very simple sanity checks that live inside the main rust repository.
     These tests should cover very basic functionality related to the translation of internal structures to stable ones.
   - **Rust compiler suites:** We are enabling the execution of rust compiler test suites.
@@ -75,7 +75,7 @@ the latest nightly.
 You need to explicitly do that.
 
 If you see some errors while compiling our tools, please ensure you have the latest nightly.
-You might also want to check [our nightly runs](https://github. com/rust-lang/project-stable-mir/actions/workflows/nightly.yml?query=branch%2Amain) to ensure they are not currently broken.
+You might also want to check [our nightly runs](https://github.com/rust-lang/project-stable-mir/actions/workflows/nightly.yml?query=branch%2Amain) to ensure they are not currently broken.
 If so, you can check what was the last successful nightly run, and use its nightly version.
 
 ### Custom toolchain
