@@ -8,10 +8,7 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 #![cfg_attr(not(feature = "rustc-build"), feature(rustc_private))]
-#![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
-    test(attr(allow(unused_variables), deny(warnings)))
-)]
+#![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
 #![feature(sized_hierarchy)]
 //!
 //! This crate shall contain all type definitions and APIs that we expect third-party tools to invoke to
