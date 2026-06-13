@@ -1,0 +1,12 @@
+[[language]]
+name = "rust"
+
+[language-server.rust-analyzer.config.rustc]
+source = "discover"
+
+[language-server.rust-analyzer.config]
+linkedProjects = ["Cargo.toml", "demo/Cargo.toml"]
+
+[language-server.rust-analyzer.config.diagnostics]
+disabled = ["unresolved-proc-macro", "unresolved-extern-crate"]
+
