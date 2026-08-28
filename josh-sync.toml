@@ -1,0 +1,4 @@
+org = "makai410"
+repo = "rustc_public"
+filter = ":/compiler/rustc_public/src:prefix=rustc_public/src"
+subtree-filter = ":/rustc_public/src:prefix=rustc_public/src"
