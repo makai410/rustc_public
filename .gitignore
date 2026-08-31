@@ -4,6 +4,7 @@
 # direnv
 .envrc
 /.direnv
+/.nix-cargo
 
 .idea
 *.swp

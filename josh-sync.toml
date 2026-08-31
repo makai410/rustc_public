@@ -1,0 +1,5 @@
+org = "makai410"
+repo = "rustc_public"
+filter = ":rev(<=bec747418c9955de4c3fd0aac4acb99206f00aa2:/compiler/rustc_public:prefix=rustc_public,_:/compiler/rustc_public/src:prefix=rustc_public/src)"
+subtree-filter = ":rev(<=b37138687103d1b69952a64d825e67cf51adfb9c:/rustc_public:prefix=rustc_public,_:/rustc_public/src:prefix=rustc_public/src)"
+filter-version = 2
