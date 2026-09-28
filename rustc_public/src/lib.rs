@@ -55,7 +55,7 @@ macro_rules! rustc_crates {
         extern crate rustc_hir;
         extern crate rustc_middle;
         extern crate rustc_public_bridge;
-        extern crate rustc_session;
+        extern crate rustc_crate_store;
         extern crate rustc_span;
         extern crate rustc_target;
     };
