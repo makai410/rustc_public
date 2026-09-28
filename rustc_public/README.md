@@ -1,5 +1,6 @@
 This crate is currently developed in-tree together with the compiler.
 
+// This is an inside change
 Our goal is to start publishing `rustc_public` into crates.io.
 Until then, users will use this as any other rustc crate, by installing
 the rustup component `rustc-dev`, and declaring `rustc-public` as an external crate.
