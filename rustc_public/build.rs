@@ -6,6 +6,7 @@ use rustversion;
 const MSRV: &str = "2025-08-09";
 const SUPPORTED: bool = rustversion::cfg!(since(2025-08-09));
 
+// This is unrelated as;dlkfjk lasdjglkjadf gkl
 fn main() {
     if !SUPPORTED && !cfg!(feature = "rustc-build") {
         let current = rustc_version().unwrap_or(String::from("unknown"));
