@@ -72,7 +72,11 @@ pub(crate) use rustc_public_bridge::IndexedVal;
 use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
 use serde::Serialize;
-
+// this is related!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// labubu
+// asjdigkflsajdlg
+// adfsglk hadfga
+// sfahsdkldgfhadlsk;fg
 /// Unstable internal APIs for bridging with `rustc` internals.
 ///
 /// This module has no stability guarantees and is not covered by semver.
