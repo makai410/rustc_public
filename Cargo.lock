@@ -527,6 +527,7 @@ dependencies = [
  "rustversion",
  "scoped-tls",
  "serde",
+ "serde_json",
  "tracing",
  "ui_test",
 ]
