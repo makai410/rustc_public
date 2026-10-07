@@ -1,0 +1,6 @@
+org = "rust-lang"
+repo = "rustc_public"
+filter = ":/compiler/rustc_public/src:prefix=rustc_public/src"
+subtree-filter = ":/rustc_public/src:prefix=rustc_public/src"
+filter-version = 2
+pull-mode = "Latest"
