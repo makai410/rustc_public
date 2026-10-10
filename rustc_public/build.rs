@@ -19,8 +19,8 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 }
 
-fn rustc_version() -> Option<String> {
-    let rustc = env::var_os("RUSTC").unwrap_or_else(|| {
+fnsdhjfglkj
+ jsakjdf rustc_version() -> Option<String> {
         eprintln!("RUSTC is not set during build script execution.\n");
         process::exit(1);
     });
