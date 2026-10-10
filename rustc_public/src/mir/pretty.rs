@@ -102,14 +102,12 @@ fn pretty_statement<W: Write>(writer: &mut W, statement: &StatementKind) -> io::
         StatementKind::SetDiscriminant { place, variant_index } => {
             writeln!(writer, "{INDENT}discriminant({place:?}) = {};", variant_index.to_index())
         }
-        StatementKind::Deinit(place) => writeln!(writer, "Deinit({place:?};"),
         StatementKind::StorageLive(local) => {
             writeln!(writer, "{INDENT}StorageLive(_{local});")
         }
         StatementKind::StorageDead(local) => {
             writeln!(writer, "{INDENT}StorageDead(_{local});")
         }
-        StatementKind::Retag(kind, place) => writeln!(writer, "Retag({kind:?}, {place:?});"),
         StatementKind::PlaceMention(place) => {
             writeln!(writer, "{INDENT}PlaceMention({place:?};")
         }
@@ -312,6 +310,9 @@ fn pretty_assert_message<W: Write>(writer: &mut W, msg: &AssertMessage) -> io::R
         AssertMessage::NullPointerDereference => {
             write!(writer, "\"null pointer dereference occurred\"")
         }
+        AssertMessage::NullReferenceConstructed => {
+            write!(writer, "\"null reference produced\"")
+        }
         AssertMessage::InvalidEnumConstruction(op) => {
             let pretty_op = pretty_operand(op);
             write!(writer, "\"trying to construct an enum from an invalid value {{}}\",{pretty_op}")
@@ -333,6 +334,7 @@ fn pretty_operand(operand: &Operand) -> String {
             format!("move {mv:?}")
         }
         Operand::Constant(cnst) => pretty_mir_const(&cnst.const_),
+        Operand::RuntimeChecks(checks) => format!("{checks:?}"),
     }
 }
 
@@ -380,20 +382,28 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
             };
             write!(writer, "{kind}{place:?}")
         }
+        Rvalue::Reborrow(target, mutability, place) => {
+            let kind = match mutability {
+                Mutability::Not => "Reborrow",
+                Mutability::Mut => "CoerceShared",
+            };
+            write!(writer, "${kind}({place:?}) as {target}")
+        }
         Rvalue::Repeat(op, cnst) => {
             write!(writer, "[{}; {}]", pretty_operand(op), pretty_ty_const(cnst))
         }
-        Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::ThreadLocalRef(item) => {
             write!(writer, "thread_local_ref{item:?}")
-        }
-        Rvalue::NullaryOp(nul, ty) => {
-            write!(writer, "{nul:?}::<{ty}>() \" \"")
         }
         Rvalue::UnaryOp(un, op) => {
             write!(writer, "{:?}({})", un, pretty_operand(op))
         }
-        Rvalue::Use(op) => write!(writer, "{}", pretty_operand(op)),
+        Rvalue::Use(op, retag) => write!(
+            writer,
+            "{}{}",
+            if matches!(retag, crate::mir::WithRetag::No) { "no_retag " } else { "" },
+            pretty_operand(op)
+        ),
     }
 }
 
@@ -413,7 +423,7 @@ fn pretty_aggregate<W: Write>(
         }
         AggregateKind::Adt(def, var, _, _, _) => {
             if def.kind() == AdtKind::Enum {
-                write!(writer, "{}::{}", def.name(), def.variant(*var).unwrap().name())?;
+                write!(writer, "{}::{}", def.trimmed_name(), def.variant(*var).unwrap().name())?;
             } else {
                 write!(writer, "{}", def.variant(*var).unwrap().name())?;
             }
