@@ -7,8 +7,8 @@ use serde::Serialize;
 use crate::abi::FnAbi;
 use crate::crate_def::CrateDef;
 use crate::mir::Body;
-use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, Ty};
-use crate::{CrateItem, DefId, Error, IndexedVal, ItemKind, Opaque, Symbol, with};
+use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, Ty, index_impl};
+use crate::{CrateItem, DefId, Error, ItemKind, Opaque, Symbol, ThreadLocalIndex, with};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum MonoItem {
@@ -32,6 +32,8 @@ pub enum InstanceKind {
     Item,
     /// A compiler intrinsic function.
     Intrinsic,
+    /// An LLVM intrinsic function.
+    LlvmIntrinsic,
     /// A virtual function definition stored in a VTable.
     /// The `idx` field indicates the position in the VTable for this instance.
     Virtual { idx: usize },
@@ -113,7 +115,10 @@ impl Instance {
             InstanceKind::Intrinsic => {
                 Some(with(|context| context.intrinsic(self.def.def_id()).unwrap().fn_name()))
             }
-            InstanceKind::Item | InstanceKind::Virtual { .. } | InstanceKind::Shim => None,
+            InstanceKind::LlvmIntrinsic
+            | InstanceKind::Item
+            | InstanceKind::Virtual { .. }
+            | InstanceKind::Shim => None,
         }
     }
 
@@ -164,6 +169,18 @@ impl Instance {
     /// These shims are only needed to generate a valid Drop call done via VTable.
     pub fn is_empty_shim(&self) -> bool {
         self.kind == InstanceKind::Shim && with(|cx| cx.is_empty_drop_shim(self.def))
+    }
+
+    /// Check whether this instance requires a caller location argument.
+    ///
+    /// Functions annotated with `#[track_caller]` have an implicit extra
+    /// `&'static core::panic::Location<'static>` argument appended to their ABI.
+    /// This argument is not present in the MIR body's signature.
+    ///
+    /// When this returns `true`, the instance's `fn_abi()` will have one additional
+    /// argument compared to the MIR body's parameter list.
+    pub fn requires_caller_location(&self) -> bool {
+        with(|cx| cx.instance_requires_caller_location(self.def))
     }
 
     /// Try to constant evaluate the instance into a constant with the given type.
@@ -241,8 +258,9 @@ impl From<StaticDef> for CrateItem {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
-pub struct InstanceDef(usize);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct InstanceDef(usize, ThreadLocalIndex);
+index_impl!(InstanceDef);
 
 impl CrateDef for InstanceDef {
     fn def_id(&self) -> DefId {
@@ -292,14 +310,5 @@ impl StaticDef {
     /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
     pub fn eval_initializer(&self) -> Result<Allocation, Error> {
         with(|cx| cx.eval_static_initializer(*self))
-    }
-}
-
-impl IndexedVal for InstanceDef {
-    fn to_val(index: usize) -> Self {
-        InstanceDef(index)
-    }
-    fn to_index(&self) -> usize {
-        self.0
     }
 }

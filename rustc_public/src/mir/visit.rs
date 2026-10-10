@@ -139,9 +139,9 @@ macro_rules! make_mir_visitor {
             fn super_basic_block(&mut self, bb: &$($mutability)? BasicBlock) {
                 let BasicBlock { statements, terminator } = bb;
                 for stmt in statements {
-                    self.visit_statement(stmt, Location(stmt.span));
+                    self.visit_statement(stmt, Location(stmt.source_info.span));
                 }
-                self.visit_terminator(terminator, Location(terminator.span));
+                self.visit_terminator(terminator, Location(terminator.source_info.span));
             }
 
             fn super_local_decl(&mut self, local: Local, decl: &$($mutability)? LocalDecl) {
@@ -159,8 +159,8 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_statement(&mut self, stmt: &$($mutability)? Statement, location: Location) {
-                let Statement { kind, span } = stmt;
-                self.visit_span(span);
+                let Statement { kind, source_info } = stmt;
+                self.visit_span(&$($mutability)? source_info.span);
                 match kind {
                     StatementKind::Assign(place, rvalue) => {
                         self.visit_place(place, PlaceContext::MUTATING, location);
@@ -169,9 +169,7 @@ macro_rules! make_mir_visitor {
                     StatementKind::FakeRead(_, place) | StatementKind::PlaceMention(place) => {
                         self.visit_place(place, PlaceContext::NON_MUTATING, location);
                     }
-                    StatementKind::SetDiscriminant { place, .. }
-                    | StatementKind::Deinit(place)
-                    | StatementKind::Retag(_, place) => {
+                    StatementKind::SetDiscriminant { place, .. } => {
                         self.visit_place(place, PlaceContext::MUTATING, location);
                     }
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
@@ -182,7 +180,7 @@ macro_rules! make_mir_visitor {
                         self.visit_user_type_projection(projections);
                     }
                     StatementKind::Coverage(coverage) => visit_opaque(coverage),
-                    StatementKind::Intrinsic(intrisic) => match intrisic {
+                    StatementKind::Intrinsic(intrinsic) => match intrinsic {
                         NonDivergingIntrinsic::Assume(operand) => {
                             self.visit_operand(operand, location);
                         }
@@ -201,8 +199,8 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_terminator(&mut self, term: &$($mutability)? Terminator, location: Location) {
-                let Terminator { kind, span } = term;
-                self.visit_span(span);
+                let Terminator { kind, source_info } = term;
+                self.visit_span(&$($mutability)? source_info.span);
                 match kind {
                     TerminatorKind::Goto { .. }
                     | TerminatorKind::Resume
@@ -274,19 +272,17 @@ macro_rules! make_mir_visitor {
                         let pcx = PlaceContext { is_mut: matches!(kind, BorrowKind::Mut { .. }) };
                         self.visit_place(place, pcx, location);
                     }
+                    Rvalue::Reborrow(target, mutability, place) => {
+                        self.visit_ty(target, location);
+                        let pcx = PlaceContext { is_mut: matches!(mutability, Mutability::Mut) };
+                        self.visit_place(place, pcx, location);
+                    }
                     Rvalue::Repeat(op, constant) => {
                         self.visit_operand(op, location);
                         self.visit_ty_const(constant, location);
                     }
-                    Rvalue::ShallowInitBox(op, ty) => {
-                        self.visit_ty(ty, location);
-                        self.visit_operand(op, location)
-                    }
                     Rvalue::ThreadLocalRef(_) => {}
-                    Rvalue::NullaryOp(_, ty) => {
-                        self.visit_ty(ty, location);
-                    }
-                    Rvalue::UnaryOp(_, op) | Rvalue::Use(op) => {
+                    Rvalue::UnaryOp(_, op) | Rvalue::Use(op, _) => {
                         self.visit_operand(op, location);
                     }
                 }
@@ -300,6 +296,7 @@ macro_rules! make_mir_visitor {
                     Operand::Constant(constant) => {
                         self.visit_const_operand(constant, location);
                     }
+                    Operand::RuntimeChecks(_) => {}
                 }
             }
 
@@ -372,6 +369,7 @@ macro_rules! make_mir_visitor {
                     AssertMessage::ResumedAfterReturn(_)
                     | AssertMessage::ResumedAfterPanic(_)
                     | AssertMessage::NullPointerDereference
+                    | AssertMessage::NullReferenceConstructed
                     | AssertMessage::ResumedAfterDrop(_) => {
                         //nothing to visit
                     }
@@ -410,7 +408,15 @@ macro_rules! super_body {
     };
 
     ($self:ident, $body:ident, ) => {
-        let Body { blocks, locals: _, arg_count, var_debug_info, spread_arg: _, span } = $body;
+        let Body {
+            blocks,
+            locals: _,
+            arg_count,
+            var_debug_info,
+            spread_arg: _,
+            span,
+            source_scopes: _,
+        } = $body;
 
         for bb in blocks {
             $self.visit_basic_block(bb);
@@ -471,7 +477,6 @@ macro_rules! visit_place_fns {
                 ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
                 ProjectionElem::Downcast(_idx) => {}
                 ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
-                ProjectionElem::Subtype(ty) => self.visit_ty(ty, location),
             }
         }
     };
@@ -512,7 +517,6 @@ macro_rules! visit_place_fns {
                 ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
                 ProjectionElem::Downcast(_idx) => {}
                 ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
-                ProjectionElem::Subtype(ty) => self.visit_ty(ty, location),
             }
         }
     };
@@ -545,7 +549,7 @@ impl Location {
 pub fn statement_location(body: &Body, bb_idx: &BasicBlockIdx, stmt_idx: usize) -> Location {
     let bb = &body.blocks[*bb_idx];
     let stmt = &bb.statements[stmt_idx];
-    Location(stmt.span)
+    Location(stmt.source_info.span)
 }
 
 /// Location of the terminator for a given basic block. Assumes that `bb_idx` is valid for a given
@@ -553,7 +557,7 @@ pub fn statement_location(body: &Body, bb_idx: &BasicBlockIdx, stmt_idx: usize) 
 pub fn terminator_location(body: &Body, bb_idx: &BasicBlockIdx) -> Location {
     let bb = &body.blocks[*bb_idx];
     let terminator = &bb.terminator;
-    Location(terminator.span)
+    Location(terminator.source_info.span)
 }
 
 /// Reference to a place used to represent a partial projection.
