@@ -1,0 +1,6 @@
+org = "rust-lang"
+repo = "rustc_public"
+filter = ":rev(<=bec747418c9955de4c3fd0aac4acb99206f00aa2:~(history=\"keep-trivial-merges\",gpgsig=\"norm-lf\")[:/compiler/rustc_public:prefix=rustc_public], _:/compiler/rustc_public/src:prefix=rustc_public/src)"
+subtree-filter = ":rev(<=7d8cf35369c6db462d56e184349db3277c8697c1:~(history=\"keep-trivial-merges\",gpgsig=\"norm-lf\")[:/rustc_public:prefix=rustc_public], _:/rustc_public/src:prefix=rustc_public/src)"
+filter-version = 2
+pull-mode = "Latest"
