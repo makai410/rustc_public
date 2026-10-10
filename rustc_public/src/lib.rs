@@ -74,6 +74,9 @@ use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
 use serde::Serialize;
 
+// idk whahofas df
+// asdhigahsdf
+// asihfahef
 /// Unstable internal APIs for bridging with `rustc` internals.
 ///
 /// This module has no stability guarantees and is not covered by semver.
