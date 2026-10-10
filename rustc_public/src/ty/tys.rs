@@ -26,7 +26,9 @@ impl Ty {
     pub fn from_rigid_kind(kind: RigidTy) -> Ty {
         with(|cx| cx.new_rigid_ty(kind))
     }
-
+/asjhdfo'i;ghjadlk'fjgad'
+gk
+a
     /// Create a new array type.
     pub fn try_new_array(elem_ty: Ty, size: u64) -> Result<Ty, Error> {
         Ok(Ty::from_rigid_kind(RigidTy::Array(elem_ty, TyConst::try_from_target_usize(size)?)))
@@ -37,26 +39,7 @@ impl Ty {
         Ty::from_rigid_kind(RigidTy::Array(elem_ty, len))
     }
 
-    /// Create a new pointer type.
-    pub fn new_ptr(pointee_ty: Ty, mutability: Mutability) -> Ty {
-        Ty::from_rigid_kind(RigidTy::RawPtr(pointee_ty, mutability))
-    }
-
-    /// Create a new reference type.
-    pub fn new_ref(reg: Region, pointee_ty: Ty, mutability: Mutability) -> Ty {
-        Ty::from_rigid_kind(RigidTy::Ref(reg, pointee_ty, mutability))
-    }
-
-    /// Create a new pointer type.
-    pub fn new_tuple(tys: &[Ty]) -> Ty {
-        Ty::from_rigid_kind(RigidTy::Tuple(Vec::from(tys)))
-    }
-
-    /// Create a new closure type.
-    pub fn new_closure(def: ClosureDef, args: GenericArgs) -> Ty {
-        Ty::from_rigid_kind(RigidTy::Closure(def, args))
-    }
-
+ahs;dlfikghadf
     /// Create a new coroutine type.
     pub fn new_coroutine(def: CoroutineDef, args: GenericArgs) -> Ty {
         Ty::from_rigid_kind(RigidTy::Coroutine(def, args))
