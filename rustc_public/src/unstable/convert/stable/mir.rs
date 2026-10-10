@@ -1,13 +1,16 @@
 //! Conversion of internal Rust compiler `mir` items to stable ones.
 
-use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::{bug, mir};
+use rustc_middle::mir;
+use rustc_middle::mono::MonoItem;
 use rustc_public_bridge::context::CompilerCtxt;
 use rustc_public_bridge::{Tables, bridge};
+use rustc_span::bug;
 
 use crate::compiler_interface::BridgeTys;
 use crate::mir::alloc::GlobalAlloc;
-use crate::mir::{ConstOperand, Statement, UserTypeProjection, VarDebugInfoFragment};
+use crate::mir::{
+    ConstOperand, SourceScopeInfo, Statement, UserTypeProjection, VarDebugInfoFragment,
+};
 use crate::ty::{Allocation, ConstantKind, MirConst};
 use crate::unstable::Stable;
 use crate::{Error, alloc, opaque};
@@ -20,8 +23,9 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        crate::mir::Body::new(
-            self.basic_blocks
+        crate::mir::Body {
+            blocks: self
+                .basic_blocks
                 .iter()
                 .map(|block| crate::mir::BasicBlock {
                     terminator: block.terminator().stable(tables, cx),
@@ -32,7 +36,8 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                         .collect(),
                 })
                 .collect(),
-            self.local_decls
+            locals: self
+                .local_decls
                 .iter()
                 .map(|decl| crate::mir::LocalDecl {
                     ty: decl.ty.stable(tables, cx),
@@ -40,11 +45,25 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                     mutability: decl.mutability.stable(tables, cx),
                 })
                 .collect(),
-            self.arg_count,
-            self.var_debug_info.iter().map(|info| info.stable(tables, cx)).collect(),
-            self.spread_arg.stable(tables, cx),
-            self.span.stable(tables, cx),
-        )
+            arg_count: self.arg_count,
+            var_debug_info: self
+                .var_debug_info
+                .iter()
+                .map(|info| info.stable(tables, cx))
+                .collect(),
+            spread_arg: self.spread_arg.stable(tables, cx),
+            span: self.span.stable(tables, cx),
+            source_scopes: self
+                .source_scopes
+                .iter()
+                .map(|scope_data| SourceScopeInfo {
+                    inlined: scope_data.inlined.map(|(instance, span)| {
+                        (instance.def.requires_caller_location(cx.tcx), span.stable(tables, cx))
+                    }),
+                    inlined_parent_scope: scope_data.inlined_parent_scope.map(|s| s.as_u32()),
+                })
+                .collect(),
+        }
     }
 }
 
@@ -74,7 +93,7 @@ impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
     ) -> Self::T {
         Statement {
             kind: self.kind.stable(tables, cx),
-            span: self.source_info.span.stable(tables, cx),
+            source_info: self.source_info.stable(tables, cx),
         }
     }
 }
@@ -149,9 +168,6 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
                     variant_index: variant_index.stable(tables, cx),
                 }
             }
-            mir::StatementKind::Deinit(place) => {
-                crate::mir::StatementKind::Deinit(place.stable(tables, cx))
-            }
 
             mir::StatementKind::StorageLive(place) => {
                 crate::mir::StatementKind::StorageLive(place.stable(tables, cx))
@@ -159,9 +175,6 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
 
             mir::StatementKind::StorageDead(place) => {
                 crate::mir::StatementKind::StorageDead(place.stable(tables, cx))
-            }
-            mir::StatementKind::Retag(retag, place) => {
-                crate::mir::StatementKind::Retag(retag.stable(tables, cx), place.stable(tables, cx))
             }
             mir::StatementKind::PlaceMention(place) => {
                 crate::mir::StatementKind::PlaceMention(place.stable(tables, cx))
@@ -198,13 +211,20 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
     ) -> Self::T {
         use rustc_middle::mir::Rvalue::*;
         match self {
-            Use(op) => crate::mir::Rvalue::Use(op.stable(tables, cx)),
+            Use(op, retag) => {
+                crate::mir::Rvalue::Use(op.stable(tables, cx), retag.stable(tables, cx))
+            }
             Repeat(op, len) => {
                 let len = len.stable(tables, cx);
                 crate::mir::Rvalue::Repeat(op.stable(tables, cx), len)
             }
             Ref(region, kind, place) => crate::mir::Rvalue::Ref(
                 region.stable(tables, cx),
+                kind.stable(tables, cx),
+                place.stable(tables, cx),
+            ),
+            Reborrow(target, kind, place) => crate::mir::Rvalue::Reborrow(
+                target.stable(tables, cx),
                 kind.stable(tables, cx),
                 place.stable(tables, cx),
             ),
@@ -215,7 +235,6 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 mutability.stable(tables, cx),
                 place.stable(tables, cx),
             ),
-            Len(place) => crate::mir::Rvalue::Len(place.stable(tables, cx)),
             Cast(cast_kind, op, ty) => crate::mir::Rvalue::Cast(
                 cast_kind.stable(tables, cx),
                 op.stable(tables, cx),
@@ -236,9 +255,6 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                     )
                 }
             }
-            NullaryOp(null_op, ty) => {
-                crate::mir::Rvalue::NullaryOp(null_op.stable(tables, cx), ty.stable(tables, cx))
-            }
             UnaryOp(un_op, op) => {
                 crate::mir::Rvalue::UnaryOp(un_op.stable(tables, cx), op.stable(tables, cx))
             }
@@ -247,11 +263,8 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 let operands = operands.iter().map(|op| op.stable(tables, cx)).collect();
                 crate::mir::Rvalue::Aggregate(agg_kind.stable(tables, cx), operands)
             }
-            ShallowInitBox(op, ty) => {
-                crate::mir::Rvalue::ShallowInitBox(op.stable(tables, cx), ty.stable(tables, cx))
-            }
             CopyForDeref(place) => crate::mir::Rvalue::CopyForDeref(place.stable(tables, cx)),
-            WrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
+            WrapUnsafeBinder(..) => unimplemented!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -318,22 +331,18 @@ impl<'tcx> Stable<'tcx> for mir::FakeBorrowKind {
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
-    type T = crate::mir::NullOp;
+impl<'tcx> Stable<'tcx> for mir::RuntimeChecks {
+    type T = crate::mir::RuntimeChecks;
     fn stable<'cx>(
         &self,
-        tables: &mut Tables<'cx, BridgeTys>,
-        cx: &CompilerCtxt<'cx, BridgeTys>,
+        _: &mut Tables<'cx, BridgeTys>,
+        _: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        use rustc_middle::mir::NullOp::*;
+        use rustc_middle::mir::RuntimeChecks::*;
         match self {
-            SizeOf => crate::mir::NullOp::SizeOf,
-            AlignOf => crate::mir::NullOp::AlignOf,
-            OffsetOf(indices) => crate::mir::NullOp::OffsetOf(
-                indices.iter().map(|idx| idx.stable(tables, cx)).collect(),
-            ),
-            UbChecks => crate::mir::NullOp::UbChecks,
-            ContractChecks => crate::mir::NullOp::ContractChecks,
+            UbChecks => crate::mir::RuntimeChecks::UbChecks,
+            ContractChecks => crate::mir::RuntimeChecks::ContractChecks,
+            OverflowChecks => crate::mir::RuntimeChecks::OverflowChecks,
         }
     }
 }
@@ -357,6 +366,8 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
             PtrToPtr => crate::mir::CastKind::PtrToPtr,
             FnPtrToPtr => crate::mir::CastKind::FnPtrToPtr,
             Transmute => crate::mir::CastKind::Transmute,
+            BoxDerefTransmute => crate::mir::CastKind::BoxDerefTransmute,
+            Subtype => crate::mir::CastKind::Subtype,
         }
     }
 }
@@ -389,6 +400,7 @@ impl<'tcx> Stable<'tcx> for mir::Operand<'tcx> {
             Copy(place) => crate::mir::Operand::Copy(place.stable(tables, cx)),
             Move(place) => crate::mir::Operand::Move(place.stable(tables, cx)),
             Constant(c) => crate::mir::Operand::Constant(c.stable(tables, cx)),
+            RuntimeChecks(c) => crate::mir::Operand::RuntimeChecks(c.stable(tables, cx)),
         }
     }
 }
@@ -433,6 +445,7 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
         use rustc_middle::mir::ProjectionElem::*;
         match self {
             Deref => crate::mir::ProjectionElem::Deref,
+            PhantomDeref => bug!("Hopefully we don't come here"),
             Field(idx, ty) => {
                 crate::mir::ProjectionElem::Field(idx.stable(tables, cx), ty.stable(tables, cx))
             }
@@ -454,8 +467,7 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             // found at https://github.com/rust-lang/rust/pull/117517#issuecomment-1811683486
             Downcast(_, idx) => crate::mir::ProjectionElem::Downcast(idx.stable(tables, cx)),
             OpaqueCast(ty) => crate::mir::ProjectionElem::OpaqueCast(ty.stable(tables, cx)),
-            Subtype(ty) => crate::mir::ProjectionElem::Subtype(ty.stable(tables, cx)),
-            UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
+            UnwrapUnsafeBinder(..) => unimplemented!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -475,15 +487,13 @@ impl<'tcx> Stable<'tcx> for mir::Local {
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::RetagKind {
-    type T = crate::mir::RetagKind;
+impl<'tcx> Stable<'tcx> for mir::WithRetag {
+    type T = crate::mir::WithRetag;
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        use rustc_middle::mir::RetagKind;
+        use rustc_middle::mir::WithRetag;
         match self {
-            RetagKind::FnEntry => crate::mir::RetagKind::FnEntry,
-            RetagKind::TwoPhase => crate::mir::RetagKind::TwoPhase,
-            RetagKind::Raw => crate::mir::RetagKind::Raw,
-            RetagKind::Default => crate::mir::RetagKind::Default,
+            WithRetag::Yes => crate::mir::WithRetag::Yes,
+            WithRetag::No => crate::mir::WithRetag::No,
         }
     }
 }
@@ -570,6 +580,9 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
                 }
             }
             AssertKind::NullPointerDereference => crate::mir::AssertMessage::NullPointerDereference,
+            AssertKind::NullReferenceConstructed => {
+                crate::mir::AssertMessage::NullReferenceConstructed
+            }
             AssertKind::InvalidEnumConstruction(source) => {
                 crate::mir::AssertMessage::InvalidEnumConstruction(source.stable(tables, cx))
             }
@@ -706,7 +719,7 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
         use crate::mir::Terminator;
         Terminator {
             kind: self.kind.stable(tables, cx),
-            span: self.source_info.span.stable(tables, cx),
+            source_info: self.source_info.stable(tables, cx),
         }
     }
 }
@@ -720,7 +733,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
     ) -> Self::T {
         use crate::mir::TerminatorKind;
         match self {
-            mir::TerminatorKind::Goto { target } => {
+            mir::TerminatorKind::Goto { target, .. } => {
                 TerminatorKind::Goto { target: target.as_usize() }
             }
             mir::TerminatorKind::SwitchInt { discr, targets } => TerminatorKind::SwitchInt {
@@ -737,18 +750,13 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
             mir::TerminatorKind::UnwindTerminate(_) => TerminatorKind::Abort,
             mir::TerminatorKind::Return => TerminatorKind::Return,
             mir::TerminatorKind::Unreachable => TerminatorKind::Unreachable,
-            mir::TerminatorKind::Drop {
-                place,
-                target,
-                unwind,
-                replace: _,
-                drop: _,
-                async_fut: _,
-            } => TerminatorKind::Drop {
-                place: place.stable(tables, cx),
-                target: target.as_usize(),
-                unwind: unwind.stable(tables, cx),
-            },
+            mir::TerminatorKind::Drop { place, target, unwind, replace: _, drop: _ } => {
+                TerminatorKind::Drop {
+                    place: place.stable(tables, cx),
+                    target: target.as_usize(),
+                    unwind: unwind.stable(tables, cx),
+                }
+            }
             mir::TerminatorKind::Call {
                 func,
                 args,
@@ -764,7 +772,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                 target: target.map(|t| t.as_usize()),
                 unwind: unwind.stable(tables, cx),
             },
-            mir::TerminatorKind::TailCall { func: _, args: _, fn_span: _ } => todo!(),
+            mir::TerminatorKind::TailCall { func: _, args: _, fn_span: _ } => unimplemented!(),
             mir::TerminatorKind::Assert { cond, expected, msg, target, unwind } => {
                 TerminatorKind::Assert {
                     cond: cond.stable(tables, cx),
@@ -877,7 +885,7 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let id = tables.intern_mir_const(cx.lift(*self).unwrap());
+        let id = tables.intern_mir_const(cx.lift(*self));
         match *self {
             mir::Const::Ty(ty, c) => MirConst::new(
                 crate::ty::ConstantKind::Ty(c.stable(tables, cx)),
@@ -898,8 +906,8 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
                 MirConst::new(ConstantKind::ZeroSized, ty, id)
             }
             mir::Const::Val(val, ty) => {
-                let ty = cx.lift(ty).unwrap();
-                let val = cx.lift(val).unwrap();
+                let ty = cx.lift(ty);
+                let val = cx.lift(val);
                 let kind = ConstantKind::Allocated(alloc::new_allocation(ty, val, tables, cx));
                 let ty = ty.stable(tables, cx);
                 MirConst::new(kind, ty, id)
