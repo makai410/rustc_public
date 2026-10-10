@@ -6,25 +6,6 @@
 
 use rustc_abi::Align;
 use rustc_middle::mir::ConstValue;
-use rustc_middle::mir::interpret::AllocRange;
-use rustc_public_bridge::bridge::Error as _;
-use rustc_public_bridge::context::CompilerCtxt;
-use rustc_public_bridge::{Tables, alloc};
-
-use super::Error;
-use super::compiler_interface::BridgeTys;
-use super::mir::Mutability;
-use super::ty::{Allocation, ProvenanceMap};
-use super::unstable::Stable;
-
-/// Creates new empty `Allocation` from given `Align`.
-fn new_empty_allocation(align: Align) -> Allocation {
-    Allocation {
-        bytes: Vec::new(),
-        provenance: ProvenanceMap { ptrs: Vec::new() },
-        align: align.bytes(),
-        mutability: Mutability::Not,
-    }
 }
 
 // We need this method instead of a Stable implementation

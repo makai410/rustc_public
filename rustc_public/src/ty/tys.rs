@@ -1,30 +1,4 @@
 use std::fmt::{self, Debug, Display, Formatter};
-use std::ops::Range;
-
-use serde::Serialize;
-
-use crate::abi::{FnAbi, Layout};
-use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
-use crate::mir::mono::{Instance, StaticDef};
-use crate::mir::{Mutability, Safety};
-use crate::target::MachineInfo;
-use crate::ty::def::*;
-use crate::{Error, Filename, Opaque, Symbol, ThreadLocalIndex, with};
-
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Ty(usize, ThreadLocalIndex);
-
-impl Debug for Ty {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Ty").field("id", &self.0).field("kind", &self.kind()).finish()
-    }
-}
-
-/// Constructors for `Ty`.
-impl Ty {
-    /// Create a new type from a given kind.
-    pub fn from_rigid_kind(kind: RigidTy) -> Ty {
-        with(|cx| cx.new_rigid_ty(kind))
     }
 
     /// Create a new array type.
