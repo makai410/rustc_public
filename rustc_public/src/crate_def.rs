@@ -1,14 +1,13 @@
 //! Module that define a common trait for things that represent a crate definition,
 //! such as, a function, a trait, an enum, and any other definitions.
 
-use serde::Serialize;
-
-use crate::ty::{GenericArgs, Span, Ty};
-use crate::{AssocItems, Crate, Symbol, with};
+use crate::ty::{GenericArgs, Span, Ty, index_impl};
+use crate::{Crate, Symbol, ThreadLocalIndex, with};
 
 /// A unique identification number for each item accessible for the current compilation unit.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub struct DefId(pub(crate) usize);
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct DefId(pub(crate) usize, ThreadLocalIndex);
+index_impl!(DefId);
 
 impl DefId {
     /// Return fully qualified name of this definition
@@ -28,6 +27,16 @@ impl DefId {
     /// as long as there is no other `Vec` importable anywhere.
     pub fn trimmed_name(&self) -> Symbol {
         with(|cx| cx.def_name(*self, true))
+    }
+
+    /// Return the parent of this definition, or `None` if this is the root of a
+    /// crate.
+    pub fn parent(&self) -> Option<DefId> {
+        with(|cx| cx.def_parent(*self))
+    }
+
+    pub fn span(&self) -> Span {
+        with(|cx| cx.span_of_a_def(*self))
     }
 }
 
@@ -63,8 +72,7 @@ pub trait CrateDef {
 
     /// Return the span of this definition.
     fn span(&self) -> Span {
-        let def_id = self.def_id();
-        with(|cx| cx.span_of_an_item(def_id))
+        self.def_id().span()
     }
 
     /// Return registered tool attributes with the given attribute name.
@@ -103,14 +111,6 @@ pub trait CrateDefType: CrateDef {
     }
 }
 
-/// A trait for retrieving all items from a definition within a crate.
-pub trait CrateDefItems: CrateDef {
-    /// Retrieve all associated items from a definition.
-    fn associated_items(&self) -> AssocItems {
-        with(|cx| cx.associated_items(self.def_id()))
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Attribute {
     value: String,
@@ -134,24 +134,30 @@ impl Attribute {
 }
 
 macro_rules! crate_def {
-    ( $(#[$attr:meta])*
-      $vis:vis $name:ident $(;)?
-    ) => {
-        $(#[$attr])*
-        #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-        $vis struct $name(pub DefId);
+    ($(
+        $(#[$attr:meta])*
+        $vis:vis $name:ident;
+    )*) => {
+        $(
+            $(#[$attr])*
+            #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+            $vis struct $name(pub DefId);
 
-        impl CrateDef for $name {
-            fn def_id(&self) -> DefId {
-                self.0
+            impl CrateDef for $name {
+                fn def_id(&self) -> DefId {
+                    self.0
+                }
             }
-        }
+        )*
     };
 }
 
 macro_rules! crate_def_with_ty {
-    ( $(#[$attr:meta])*
-      $vis:vis $name:ident $(;)?
+    () => {};
+    (
+        $(#[$attr:meta])*
+        $vis:vis $name:ident;
+        $($rest:tt)*
     ) => {
         $(#[$attr])*
         #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
@@ -164,11 +170,37 @@ macro_rules! crate_def_with_ty {
         }
 
         impl CrateDefType for $name {}
-    };
-}
 
-macro_rules! impl_crate_def_items {
-    ( $name:ident $(;)? ) => {
-        impl CrateDefItems for $name {}
+        crate_def_with_ty!($($rest)*);
+    };
+    (
+        $(#[$attr:meta])*
+        $vis:vis $name:ident {
+            $(
+                $(#[$f_attr:meta])*
+                $f_vis:vis $f_name:ident: $f_ty:ty,
+            )*
+        }
+        $($rest:tt)*
+    ) => {
+        $(#[$attr])*
+        #[derive(Clone, PartialEq, Eq, Debug)]
+        $vis struct $name {
+            pub(crate) def: DefId,
+            $(
+                $(#[$f_attr])*
+                $f_vis $f_name: $f_ty,
+            )*
+        }
+
+        impl CrateDef for $name {
+            fn def_id(&self) -> DefId {
+                self.def
+            }
+        }
+
+        impl CrateDefType for $name {}
+
+        crate_def_with_ty!($($rest)*);
     };
 }
