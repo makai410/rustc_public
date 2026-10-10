@@ -2,9 +2,9 @@ use std::process::{self, Command};
 use std::{env, str};
 
 use rustversion;
-
+// thisis unrealted
 const MSRV: &str = "2025-08-09";
-const SUPPORTED: bool = rustversion::cfg!(since(2025-08-09));
+const SUPPORTED: bool = rustversion::cfg!(since(2025 - 08 - 09));
 
 fn main() {
     if !SUPPORTED && !cfg!(feature = "rustc-build") {
