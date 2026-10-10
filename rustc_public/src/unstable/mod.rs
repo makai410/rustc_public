@@ -12,35 +12,13 @@ use rustc_middle::{mir, ty};
 use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
 
-use super::compiler_interface::BridgeTys;
-use crate::{CtorKind, ItemKind};
-
-pub(crate) mod convert;
-mod internal_cx;
-
-/// Trait that defines the methods that are fine to call from [`RustcInternal`].
-///
-/// This trait is only for [`RustcInternal`]. Any other other access to rustc's internals
-/// should go through [`rustc_public_bridge::context::CompilerCtxt`].
-#[cfg_attr(not(feature = "rustc_internal"), allow(unreachable_pub))]
-pub trait InternalCx<'tcx>: Copy + Clone {
-    fn tcx(self) -> TyCtxt<'tcx>;
-
-    fn lift<T: ty::Lift<TyCtxt<'tcx>>>(self, value: T) -> T::Lifted;
-
-    fn mk_args_from_iter<I, T>(self, iter: I) -> T::Output
-    where
-        I: Iterator<Item = T>,
-        T: ty::CollectAndApply<ty::GenericArg<'tcx>, ty::GenericArgsRef<'tcx>>;
-
-    fn mk_pat(self, v: ty::PatternKind<'tcx>) -> ty::Pattern<'tcx>;
-
-    fn mk_poly_existential_predicates(
-        self,
-        eps: &[ty::PolyExistentialPredicate<'tcx>],
-    ) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>>;
-
-    fn mk_type_list(self, v: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>>;
+ sdhg;kl jasdf; g
+ af
+ adpdf glkadjfg
+ afgkjads
+ f asdfasd
+ g asdfff
+ as   fn mk_type_list(self, v: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>>;
 
     fn lifetimes_re_erased(self) -> ty::Region<'tcx>;
 
